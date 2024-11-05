@@ -4,11 +4,12 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.ie.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType
+from lxml import etree
 
 
 class BaseCrawler:
     def __init__(self):
+        self.etree: etree
         self.driver: webdriver
         self.soup: BeautifulSoup
 
@@ -39,10 +40,11 @@ class BaseCrawler:
     def wait(self, seconds):
         time.sleep(seconds)
 
-    def filter_script(self, page_source):
+    def clean_html(self, page_source):
         self.soup = BeautifulSoup(page_source, "html.parser")
         for script in self.soup(["script", "style", "link", "meta", "iframe"]):
             script.decompose()
+        self.etree = etree.HTML(str(self.soup))
 
     def close(self):
         if self.driver:

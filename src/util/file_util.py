@@ -41,21 +41,16 @@ def read_file_to_json(file_name):
         # Load the data from the file and convert it to a Python object
         return json.load(file)
 
-def write_json_to_csv(file_name, json_list):
-    """
-            Flatten a list of JSON objects and write it to a CSV file.
 
-            :param file_name: The name of the CSV file.
-            :param json_list: A list of JSON objects to be flattened and saved to CSV.
-            """
-    # Flatten the list of JSON objects
-    df = pd.json_normalize(json_list)
-
-    # Create the directory if it does not exist
-    os.makedirs(FOLDER_DATA, exist_ok=True)
+def write_json_to_csv(file_name, data):
+    """Save a list of objects to a CSV file."""
+    # Flatten each object in the list
+    for item in data:
+        for key, value in item.items():
+            if isinstance(value, dict):  # Check if the value is a dictionary
+                item[key] = json.dumps(value)  # Convert to JSON string
+    df = pd.DataFrame(data)
     location = os.path.join(FOLDER_DATA, file_name)
-    print(location)
-    # Save the DataFrame to a CSV file
+    os.makedirs(FOLDER_DATA, exist_ok=True)
+    # Create a DataFrame and save to CSV
     df.to_csv(location, index=False, encoding='utf-8')
-
-

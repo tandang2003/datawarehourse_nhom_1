@@ -1,10 +1,11 @@
 from datetime import datetime
 
-from selenium.common import WebDriverException
+from selenium.common import NoSuchElementException
 
 from src.config.setting import SOURCE_A_1, SOURCE_A_BASE
+from src.service.extract_service.crawler.config_crawler import config_crawler_source_A_1
 from src.service.extract_service.crawler.paging_base_crawler import PagingBase
-from src.util.file_util import write_json_to_csv, write_json_to_file
+from src.util.file_util import write_json_to_csv
 
 
 class SourceA1Crawler(PagingBase):
@@ -19,99 +20,33 @@ class SourceA1Crawler(PagingBase):
         # Wait for 5 seconds
         self.wait(5)
         driver = self.driver.page_source
-        self.filter_script(driver)
+        self.clean_html(driver)
 
         estate_list = self.soup.select(".js__card")
         list_url = []
         for (estate) in estate_list:
             link = estate.select_one(".js__product-link-for-product-id").get("href")
-            list_url.append(f"{self._domain}{str(link)}")
+            if link.startswith("https://"):
+                continue
+            else:
+                list_url.append(f"{self._domain}{str(link)}")
         return list_url
 
     def crawl_item(self, url):
-        try:
-            self.get_url(url)
-        except WebDriverException as e:
-            return None
-        print(f"Visiting item: {url}")
+        super().crawl_item(url)
+        result = {}
 
-        self.wait(10)
-        current_url = self.driver.current_url
-        if current_url != url:
-            return None
+        for field_name, properties in config_crawler_source_A_1.items():
+            print(f"Field Name: {field_name}")  # Print the name of the field
+            print(f"Properties: {properties}")  # Print the properties of the field
+            result[field_name] = self.find_element_by_config(properties)
 
-        driver = self.driver.page_source
-        self.filter_script(driver)
-
-        title = self.soup.select_one(".pr-title").get_text(strip=True)
-        address = self.soup.select_one(".js__pr-address").get_text(strip=True)
-        description = self.soup.select_one(".re__detail-content").get_text(strip=True)
-        images = self.soup.select(".slick-track img")
-        result = {
-            "Subject": title,
-            "Address": address,
-            "Description": description
-        }
-        properties = self.soup.select(".re__pr-specs-content-item")
-        result["properties"] = {}
-        result["images"] = []
-        for item in images:
-            result["images"].append(item.get("src"))
-        for item in properties:
-            key = item.select_one(".re__pr-specs-content-item-title").get_text(strip=True)
-            value = item.select_one(".re__pr-specs-content-item-value").get_text(strip=True)
-            result["properties"][key] = value
-
-        seller = self.soup.select_one(".js__ob-agent-info")
-        email_selector = seller.select_one("#email")
-        avatar_selector = seller.select_one("img")
-        result['agent'] = {
-            'avatar': avatar_selector.get("src") if avatar_selector else None,
-            'fullname': seller.select_one(".js_contact-name").get("title"),
-            'email': email_selector.get("data-email") if email_selector else None,
-        }
-
-        result["created_at"] = datetime.now().strftime("%H:%M %d:%m:%Y")
-        info = self.soup.select(".js__pr-config-item")
-        result['start_date'] = info[0].select_one(".value").get_text(strip=True)
-        result['end_date'] = info[1].select_one(".value").get_text(strip=True)
-        result["src"] = current_url
-        result["natural_id"] = info[3].select_one(".value").get_text(strip=True)
         return result
-
-        # def crawl(self):
-        #     self.get_url(SOURCE_A_1)
-        #
-        #     # Wait for 5 seconds
-        #     self.wait(5)
-        #
-        #     driver = self.driver.page_source
-        #     self.filter_script(driver)
-        #
-        #     estate_list = self.soup.select(".js__card")
-        #     id_link = {}
-        #     for (estate) in estate_list:
-        #         natural_id = estate.select_one(".js__product-link-for-product-id").get('data-product-id')
-        #         link = estate.select_one(".js__product-link-for-product-id").get("href")
-        #         id_link[natural_id] = str(link)
-
-        # items = []
-        # for (natural_id, link) in id_link.items():
-        #     item = self.crawlItem(link)
-        #     if item is None:
-        #         item = {"error": "Can't crawl this item"}
-        #     item["natural_id"] = natural_id
-        #     item["src"] = link
-        #     items.append(item)
-        #     print(f"{item}")
-        # self.close()
-        # return items
 
     def after_run(self):
         data = self._list_item
         current_date = datetime.now().strftime("%Y_%m_%d__%H_%M")
-        print(data)
-        write_json_to_file(f"source_1_{current_date}.json", data)
+        print(f"data: {data}")
         filename = f"source_1_{current_date}.csv"
         write_json_to_csv(filename, data)
         print(f"Data has been saved to {filename}")
@@ -119,50 +54,47 @@ class SourceA1Crawler(PagingBase):
     def handle_error_item(self, error):
         super().handle_error_item(error)
 
-    # def crawlItem(self, url):
-    #     self.get_url(url)
-    #     print(f"Visiting {url}")
-    #
-    #     self.wait(10)
-    #     current_url = self.driver.current_url
-    #     if current_url != url:
-    #         return None
-    #     driver = self.driver.page_source
-    #     self.filter_script(driver)
-    #
-    #     title = self.soup.select_one(".pr-title").get_text(strip=True)
-    #     address = self.soup.select_one(".js__pr-address").get_text(strip=True)
-    #     description = self.soup.select_one(".re__detail-content").get_text(strip=True)
-    #     images = self.soup.select(".slick-track img")
-    #     result = {
-    #         "Subject": title,
-    #         "Address": address,
-    #         "Description": description
-    #     }
-    #     properties = self.soup.select(".re__pr-specs-content-item")
-    #     result["properties"] = {}
-    #     result["images"] = []
-    #     for item in images:
-    #         result["images"].append(item.get("src"))
-    #     for item in properties:
-    #         key = item.select_one(".re__pr-specs-content-item-title").get_text(strip=True)
-    #         value = item.select_one(".re__pr-specs-content-item-value").get_text(strip=True)
-    #         result["properties"][key] = value
-    #
-    #     seller = self.soup.select_one(".js__ob-agent-info")
-    #     email_selector = seller.select_one("#email")
-    #     avatar_selector = seller.select_one("img")
-    #     result['agent'] = {
-    #         'avatar': avatar_selector.get("src") if avatar_selector else None,
-    #         'fullname': seller.select_one(".js_contact-name").get("title"),
-    #         'email': email_selector.get("data-email") if email_selector else None,
-    #     }
-    #
-    #     result["created_at"] = datetime.now().strftime("%H:%M %d:%m:%Y")
-    #     info = self.soup.select(".js__pr-config-item")
-    #     result['start_date'] = info[0].select_one(".value").get_text(strip=True)
-    #     result['end_date'] = info[1].select_one(".value").get_text(strip=True)
-    #     return result
     @property
     def base_url(self):
         return self._base_url
+
+    def find_elements_with_xpath(self, xpath):
+        try:
+            # Attempt to find elements using the provided XPath
+            elements = self.etree.xpath(xpath)
+
+            if not elements:
+                print("No elements found with the specified XPath.")
+
+            return elements  # Return found elements (can be an empty list if none found)
+
+        except NoSuchElementException:
+            print("Element not found using the provided XPath.")
+            return []  # Return an empty list on exception
+
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return []  # Return an empty list on other exceptions
+
+    def find_element_by_config(self, field_properties):
+        print(field_properties)
+        method = field_properties.get("method", None)
+        selector = field_properties.get("selector", None)
+        attribute = field_properties.get("attribute", None)
+        quantity = field_properties.get("quantity", 0)
+        xpath = self.find_elements_with_xpath(selector)
+
+        if quantity is None:
+            return list(map(lambda img: img.get(attribute), xpath)) if xpath else None
+        quantity -= 1
+        if method == "time":
+            return datetime.now().strftime("%d/%m/%Y")
+        if method == "url":
+            return self.driver.current_url
+        if method == "description":
+            return ''.join(xpath[quantity].itertext()).strip() if xpath else None
+        if method == "get_attribute":
+            return xpath[quantity].get(attribute) if xpath else None
+        if method == "text":
+            return xpath[quantity].text.strip() if xpath else None
+        return None
