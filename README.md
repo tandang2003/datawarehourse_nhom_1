@@ -32,11 +32,13 @@ Make sure you have the following installed:
 ## Setup
 ### 1. Install environment (in root project)
 ```bash
-   python3 -m venv .venv
-   pip install -r requirements.txt
+   python3 -m venv venv
 ```
-
-### 3. Run the project (in root project)
-```bash (extract_service)
-   python3 -m service.extract_service.main
+### 2. active (in root project)
+```bash
+  .\venv\Scripts\activate
+```
+### 3. install lib
+```bash
+  pip install -r requirements.txt
 ```
