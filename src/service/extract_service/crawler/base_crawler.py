@@ -6,6 +6,8 @@ from selenium.webdriver.ie.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from lxml import etree
 
+from src.service.AppException import AppException
+
 
 class BaseCrawler:
     def __init__(self):
@@ -14,7 +16,10 @@ class BaseCrawler:
         self.soup: BeautifulSoup
 
     def setup_driver(self, headless=False, disable_resource=False):
+        # 8.1 Khởi tạo Chrome driver
         chrome_options = webdriver.ChromeOptions()
+
+        # 8.2 Thêm các trọng số
         chrome_options.add_argument(
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
         chrome_options.add_argument("--disable-gpu")  # Disable GPU rendering
@@ -34,7 +39,7 @@ class BaseCrawler:
 
     def get_url(self, url):
         if self.driver is None:
-            raise Exception("Driver not initialized. Call setup_driver() first.")
+            raise AppException(message="Driver not initialized. Call setup_driver() first.", )
         self.driver.get(url)
 
     def wait(self, seconds):
