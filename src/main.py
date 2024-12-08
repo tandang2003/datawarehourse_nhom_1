@@ -52,6 +52,7 @@ def load_data_from_warehouse_to_data_mart():
     pass
 
 
+
 @app.on_event("startup")
 def startup_event():
     scheduler.start()
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         port=SERVER_PORT,
         reload=True
     )
-    # c = CrawlController()
+    #c = CrawlController()
     # c.get_config()
 
     # c = CrawlController()
