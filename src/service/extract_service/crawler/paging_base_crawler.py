@@ -6,8 +6,9 @@ from datetime import datetime
 
 from selenium.common import WebDriverException, NoSuchElementException
 
-from src.service.AppException import AppException, LEVEL
+from src.service.AppException import STATUS, AppException
 from src.service.extract_service.crawler.base_crawler import BaseCrawler
+from src.service.notification_service.email import EmailTemplate, LABEL
 from src.util.file_util import write_json_to_csv
 from src.util.validation_util import check_url_valid
 
@@ -68,7 +69,7 @@ class PagingBase(BaseCrawler):
             logging.info(self._list_item)
             # 7.7 gọi hàm handle_success() đễ xử lý thành công
             return self.handle_success()
-        except AppException as e:
+        except AppException | WebDriverException as e:
             # 7.8 Gọi hàm handle_exception() để xử lý lỗi
             return self.handle_exception(e)
 
@@ -120,11 +121,10 @@ class PagingBase(BaseCrawler):
         # 12.4 Lấy danh sách các url đến trang chi tiết
         estate_list = self.soup.select(self._navigate_scenario["list"])
 
-
         # 12.5 Kiểm tra list_url != None
         if len(estate_list) == 0:
             # 12.6 Ném ra ngoại lệ AppException => Crawl page không thành công
-            raise AppException(LEVEL.FILE_ERROR, "No data found")
+            raise AppException(STATUS.FILE_ERROR, "No data found")
 
         # 12.6 Tạo result = [] chứa các url đến trang chi tiết
         result = []
@@ -156,7 +156,18 @@ class PagingBase(BaseCrawler):
         # 10.4 lưu dữ liệu vào file sử dụng hàm write_json_to_csv
         write_json_to_csv(path, data)
         logging.info(f"Data has been saved to {path}")
-        # 10.5 trả về đường dẫn đến file, số lượng dòng thu thập được,trạng thái "STAGING_PENDING" và đường dẫn file lỗi là None
+
+        # 10.5 Gửi email thông báo
+        email_template = EmailTemplate(subject="Sent data to warehouse",
+                                       status=STATUS.STAGING_PENDING.name,
+                                       code=STATUS.STAGING_PENDING.value,
+                                       message="Success",
+                                       file_log=None,
+                                       label=LABEL.INFO)
+        email_template.sent_mail()
+
+        # 10.6 trả về đường dẫn đến file, số lượng dòng thu thập được,
+        # trạng thái "STAGING_PENDING" và đường dẫn file lỗi là None
         return {
             'file': path,
             'count_row': len(data),
@@ -192,7 +203,7 @@ class PagingBase(BaseCrawler):
         xpath = self.find_elements_with_xpath(selector)
 
         try:
-            #9.2 regex != None
+            # 9.2 regex != None
             if regex:
                 # 9.2.1 gọi hàm find_element_by_regex (14)
                 return self.find_element_by_regex(xpath, regex)
@@ -248,7 +259,7 @@ class PagingBase(BaseCrawler):
         # 14.2 Tạo regex xpath từ regex pattern
         id_pattern = fr"{regex_pattern}".replace("\\\\", "\\")
         # 14.3 Trích xuất text từ xpath
-        text =''.join(xpath[0].itertext())
+        text = ''.join(xpath[0].itertext())
         # 14.4 Áp dụng regex trong text
         match = re.search(id_pattern, text)
         if match:

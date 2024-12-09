@@ -1,5 +1,3 @@
-import json
-
 import mysql.connector
 from mysql.connector import Error
 
@@ -24,18 +22,25 @@ class MySQLCRUD:
                 port=port,
                 user=user,
                 password=password,
-                database=database
+                database=database,
+                autocommit=True,
+                allow_local_infile=True
             )
             print(f"Connection pool created with pool size: {pool_size}")
         except Error as e:
             print(f"Error creating connection pool: {e}")
 
     def get_controller_connection(self):
+        # 1.2 Kiểm tra trong quá trình lấy connection có bị lỗi hay không
         try:
+            # 1.1 Lấy connection controller từ controller_pool
+            # 1.2.1 Không có lỗi sảy ra
             connection = self.__controller_pool.get_connection()
+            # 1.3.1 trả connection nhận được từ pool
             return connection
         except Error as e:
-            #     else send mail
+            #1.2.2 Có bị lỗi
+            #1.3.2 gửi lỗi phát sinh ra hàm sử dụng
             raise Exception(f"Failed to get connection from pool: {e}")
             # return None
 
@@ -51,9 +56,8 @@ class MySQLCRUD:
             # 2.1 trả connection nhận được từ pool
             return connection
         except Error as e:
-            return None
-            # 2.2.gửi một email báo lỗi với email mặc định được lưu trên server
-            # TODO send mail
+            # 2.2.gửi lỗi phát sinh ra hàm sử dụng
+            raise Exception(f"Failed to get connection from pool: {e}")
 
     def __staging_establish_pool(self):
         # 1.Lấy connection của controller thông qua hàm get_controller_conection
@@ -72,7 +76,10 @@ class MySQLCRUD:
                     port=row["port"],
                     user=row["username"],
                     password=row["password"],
-                    database=row["name"]
+                    database=row["name"],
+                    autocommit=True,
+                    allow_local_infile=True
+
                 )
         print(f"Connection pool created with staging pool size: {CONTROLLER_DB_POOL_SIZE}")
         cursor.close()
@@ -89,9 +96,8 @@ class MySQLCRUD:
             # 2.1 trả  connection nhận được từ pool
             return connection
         except Error as e:
-            return None
-            # 2.2.gửi một email báo lỗi với email mặc định được lưu trên server
-            # TODO send mail
+            # 2.2.gửi lỗi phát sinh ra hàm sử dụng
+            raise Exception(f"Failed to get connection from pool: {e}")
 
     def __warehouse_establish_pool(self):
         # 1.Lấy connection của controller thông qua hàm get_controller_conection
@@ -110,10 +116,28 @@ class MySQLCRUD:
                     port=row["port"],
                     user=row["username"],
                     password=row["password"],
-                    database=row["name"]
+                    database=row["name"],
+                    autocommit=True,
+                    allow_local_infile=True
                 )
                 print(f"Connection pool created with warehouse pool size: {CONTROLLER_DB_POOL_SIZE}")
         cursor.close()
+
+    def get_datamart_connection(self) -> mysql.connector.connection.MySQLConnection:
+        # 1.Kiểm tra staging connection pool có được thiết lập chưa
+        if self.__data_mart_pool is None:
+            # 1.1.thực hiện tạo connection pool của staging (bằng hàm __staging_establish_pool)
+            self.__data_mart_establish_pool()
+        #     1.2Lấy connection từ staging_pool
+        # 2.Kiểm tra trong quá trình lấy connection có lỗi sảy ra không
+        try:
+            connection = self.__data_mart_pool.get_connection()
+            # 2.1 trả connection nhận được từ pool
+            return connection
+        except Error as e:
+            return None
+            # 2.2.gửi một email báo lỗi với email mặc định được lưu trên server
+            # TODO send mail
 
     def call_procedure(self, procedure_name: str, connection: mysql.connector.connection.MySQLConnection, args=()):
         # 1 Kiển tra connection có được truyền vào hay không
@@ -178,6 +202,31 @@ class MySQLCRUD:
         except Error as e:
             print(f"Error closing the connection pool: {e}")
 
+    def __data_mart_establish_pool(self):
+        # 1.Lấy connection của controller thông qua hàm get_controller_conection
+        controller_connection: mysql.connector.connection.MySQLConnection = self.__controller_pool.get_connection()
+        cursor = controller_connection.cursor(dictionary=True)
+        # 2.Gọi tới procedure get_database_config lấy các thông tin connection cần thiết
+        cursor.callproc(procedure_get_database_config, ("datamart",))
+        for rows in cursor.stored_results():
+            for row in rows.fetchall():
+                # 3.Tạo connection tới warehouse database với các thông tin trả về từ procedure
+                self.__data_mart_pool = mysql.connector.pooling.MySQLConnectionPool(
+                    pool_name=CONTROLLER_DB_POOL_NAME,
+                    pool_size=CONTROLLER_DB_POOL_SIZE,
+                    pool_reset_session=True,  # Resets session on each connection reuse
+                    host=row["host"],
+                    port=row["port"],
+                    user=row["username"],
+                    password=row["password"],
+                    database=row["name"],
+                    autocommit=True,
+                    allow_local_infile=True
+
+                )
+        print(f"Connection pool created with staging pool size: {CONTROLLER_DB_POOL_SIZE}")
+        cursor.close()
+
 
 if __name__ == '__main__':
     controller_connector = MySQLCRUD(
@@ -189,7 +238,6 @@ if __name__ == '__main__':
         pool_name=CONTROLLER_DB_POOL_NAME,
         pool_size=CONTROLLER_DB_POOL_SIZE
     )
-    controller_connector.get_staging_connection()
-    controller_connector.get_warehouse_connection()
+    controller_connector.get_datamart_connection()
 staging_connector = None
 warehouse_connector = None
