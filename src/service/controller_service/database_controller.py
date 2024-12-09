@@ -31,7 +31,8 @@ class Controller:
         except Exception as e:
             print(f"Error: {e}")
             return None
-
+    def get_staging_connection(self):
+        return self.__connector.get_staging_connection()
     def call_staging_procedure(self, procedure_name, args):
         # 1.Kiểm tra trong quá trình lấy connection có lỗi sảy ra không
         try:
@@ -50,6 +51,18 @@ class Controller:
         try:
             # 2. tạo connection warehouse bằng hàm get_controller_connection
             connection = self.__connector.get_warehouse_connection()
+            # 3.sử dụng hàm call_procedure(3) với tên procedure, connection lấy được và các tham số cần thiết
+            result = self.__connector.call_procedure(procedure_name, connection, args)
+            # 4.trả về kết quả
+            return result
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+    def call_datamart_procedure(self, procedure_name, args, header):
+        # 1.Kiểm tra trong quá trình lấy connection có lỗi sảy ra không
+        try:
+            # 2. tạo connection datamart bằng hàm get_controller_connection
+            connection = self.__connector.get_datamart_connection()
             # 3.sử dụng hàm call_procedure(3) với tên procedure, connection lấy được và các tham số cần thiết
             result = self.__connector.call_procedure(procedure_name, connection, args)
             # 4.trả về kết quả
