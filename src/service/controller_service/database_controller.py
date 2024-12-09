@@ -1,3 +1,4 @@
+
 from src.config.database import MySQLCRUD
 from src.config.setting import CONTROLLER_DB_PORT, CONTROLLER_DB_HOST, CONTROLLER_DB_NAME, CONTROLLER_DB_USER, \
     CONTROLLER_DB_PASS, CONTROLLER_DB_POOL_NAME, CONTROLLER_DB_POOL_SIZE
@@ -16,7 +17,7 @@ class Controller:
             pool_name=CONTROLLER_DB_POOL_NAME,
             pool_size=CONTROLLER_DB_POOL_SIZE
         )
-
+        print(CONTROLLER_DB_HOST, CONTROLLER_DB_PORT,CONTROLLER_DB_USER,CONTROLLER_DB_PASS,CONTROLLER_DB_NAME,CONTROLLER_DB_POOL_NAME,CONTROLLER_DB_POOL_SIZE)
         print(f"Connection pool created with pool size: {CONTROLLER_DB_POOL_SIZE}")
 
     def call_controller_procedure(self, procedure_name, args):
@@ -31,14 +32,22 @@ class Controller:
         except Exception as e:
             print(f"Error: {e}")
             return None
+
+
     def get_staging_connection(self):
         return self.__connector.get_staging_connection()
     def call_staging_procedure(self, procedure_name, args):
         # 1.Kiểm tra trong quá trình lấy connection có lỗi sảy ra không
         try:
             # 2. tạo connection staging bằng hàm get_controller_connection
+
+
+            #4 gọi dến kết nối db thông qua hàm get_staging_connection()
             connection = self.__connector.get_staging_connection()
             # 3.sử dụng hàm call_procedure(3) với tên procedure, connection lấy được và các tham số cần thiết
+
+
+            #5 thực thi hàm call_procedure với procedure được truyền vào
             result = self.__connector.call_procedure(procedure_name, connection, args)
             # 4.trả về kết quả
             return result

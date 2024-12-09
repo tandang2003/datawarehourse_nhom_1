@@ -5,6 +5,7 @@ from src.config.setting import SERVER_HOST, SERVER_PORT
 from src.service.controller_service.crawl_controller import CrawlController
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
+import uvicorn
 
 app = FastAPI()
 scheduler = BackgroundScheduler()
