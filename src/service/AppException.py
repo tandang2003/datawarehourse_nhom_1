@@ -1,35 +1,37 @@
-import traceback
 import logging
+import traceback
 from enum import Enum
 
-from src.service.notification_service.email import sent_mail, EmailCategory
+from selenium.common import WebDriverException
+
+from src.service.notification_service.email import EmailTemplate, LABEL
 
 
-class LEVEL(Enum):
-    FILE_ERROR = 1
-    STAGING_ERROR = 2
-    WAREHOUSE_ERROR = 3
-    DATAMART_ERROR = 4
-    FILE_PENDING = 5
-    STAGING_PENDING = 6
-    WAREHOUSE_PENDING = 7
-    DATAMART_PENDING = 8
+class STATUS(Enum):
+    FILE_ERROR = "001"
+    FILE_PENDING = "002"
+    STAGING_ERROR = "003"
+    STAGING_PENDING = "004"
+    WAREHOUSE_ERROR = "005"
+    WAREHOUSE_PENDING = "006"
+    DATAMART_ERROR = "007"
+    DATAMART_PENDING = "008"
 
 
-# Các level lỗi để lưu log
-LEVEL_ERROR = [LEVEL.FILE_ERROR, LEVEL.STAGING_ERROR, LEVEL.WAREHOUSE_ERROR, LEVEL.DATAMART_ERROR]
+# Các status lỗi để lưu log
+STATUS_ERROR = [STATUS.FILE_ERROR, STATUS.STAGING_ERROR, STATUS.WAREHOUSE_ERROR, STATUS.DATAMART_ERROR]
 
 
 class AppException(Exception):
-    def __init__(self, level: LEVEL = LEVEL.FILE_ERROR, message: str = None, file_name=None):
+    def __init__(self, status=None, message: str = None, file_name=None):
         self._message = message
-        self._level = level
+        self._status = status
         self._file_name = file_name
 
     # 15
     def handle_exception(self):
         # 15.1 Kiểm tra level là thuộc level error
-        if self._level in LEVEL_ERROR:
+        if self._status is not None and self._status in STATUS_ERROR:
             self._handle_save_error_log()
 
         # 15.2 Kiểm tra message != None
@@ -55,11 +57,13 @@ class AppException(Exception):
         logging.error(f"Error log saved {self._file_name}", exc_info=True)
 
     def _handle_sent_email(self):
-        sent_mail(f"""
-                            Level: {self._level.name}
-                            Message: {self._message}        
-                            File name: {self._file_name}
-                            """, EmailCategory.ERROR)
+        email_template = EmailTemplate(subject="Test",
+                                       status=self._status.name,
+                                       code=self._status.value,
+                                       message=self._message,
+                                       file_log=self._file_name,
+                                       label=LABEL.ERROR)
+        email_template.sent_mail()
 
     @property
     def file_error(self):
@@ -68,5 +72,3 @@ class AppException(Exception):
     @file_error.setter
     def file_error(self, file_name):
         self._file_name = file_name
-
-
